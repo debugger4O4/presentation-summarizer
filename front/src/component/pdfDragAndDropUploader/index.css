@@ -1,0 +1,32 @@
+.upload-center-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.upload-center-container .ant-upload-dragger {
+    width: 400px;
+    height: 200px;
+    border-radius: 10px;
+    background-color: #fafafa;
+    border: 2px dashed #ddd;
+    transition: all 0.3s ease-in-out;
+}
+
+.upload-center-container .ant-upload-drag-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.upload-center-container .ant-upload-text {
+    font-size: 16px;
+    line-height: 1.5;
+    color: #666;
+}
+
+.upload-center-container .ant-upload-hint {
+    font-size: 14px;
+    color: #999;
+    margin-top: 16px;
+}

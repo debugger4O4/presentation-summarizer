@@ -39,16 +39,17 @@ const PdfDragAndDropUploader = () => {
 
     return (
         <div>
-            <Form.Item>
-                <Form.Item name="dragger" valuePropName="fileList" getValueFromEvent={normFile} noStyle>
-                    <Upload.Dragger name="files" onChange={handleFileChange} multiple>
-                        <p className="ant-upload-drag-icon"><InboxOutlined /></p>
-                        <p className="ant-upload-text">Щелкните или перетащите файл в эту область для загрузки</p>
-                        <p className="ant-upload-hint">Поддержка загрузки одного или нескольких файлов.</p>
-                    </Upload.Dragger>
+            <div className="upload-center-container">
+                <Form.Item>
+                    <Form.Item name="dragger" valuePropName="fileList" getValueFromEvent={normFile} noStyle>
+                        <Upload.Dragger name="files" onChange={handleFileChange} multiple>
+                            <p className="ant-upload-drag-icon"><InboxOutlined /></p>
+                            <p className="ant-upload-text">Щелкните или перетащите файл в эту область для загрузки</p>
+                            <p className="ant-upload-hint">Поддержка загрузки одного или нескольких файлов.</p>
+                        </Upload.Dragger>
+                    </Form.Item>
                 </Form.Item>
-            </Form.Item>
-
+            </div>
             <div>{textForSummarize}</div>
         </div>
     );
