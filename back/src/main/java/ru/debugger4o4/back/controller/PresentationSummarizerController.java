@@ -1,7 +1,5 @@
 package ru.debugger4o4.back.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,7 +21,7 @@ public class PresentationSummarizerController {
     }
 
     @PostMapping("/getSummarize")
-    public ResponseEntity<InputStreamResource> createTemplates(@RequestBody String textForSummarize) {
+    public ResponseEntity<byte[]> createTemplates(@RequestBody String textForSummarize) {
         return presentationSummarizerService.getSummarize(textForSummarize);
     }
 }
