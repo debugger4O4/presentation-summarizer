@@ -39,10 +39,10 @@ const PdfDragAndDropUploader = () => {
                 url: 'http://localhost:8080/summarize/getSummarize',
                 method: 'POST',
                 data: {textForSummarize},
-                responseType: 'blob', // Важно указать blob для бинарных данных
+                responseType: 'blob', // Важно указать blob для бинарных данных.
             });
 
-            // Создаем ссылку для скачивания файла
+            // Создаем ссылку для скачивания файла.
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
@@ -51,7 +51,7 @@ const PdfDragAndDropUploader = () => {
             link.click();
             window.URL.revokeObjectURL(url);
         } catch (error) {
-            console.error('Ошибка при загрузке презентации:', error);
+            console.error('Error loading the presentation:', error);
         } finally {
             setDownloading(false);
         }
