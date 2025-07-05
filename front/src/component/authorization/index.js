@@ -1,23 +1,30 @@
-import React, {useState} from 'react';
+import {useState} from "react";
+import {useAuth} from "../authorizationProvider/index";
 import './index.css';
-import {Col, Row} from "antd";
+import {Button, Col, Form, Input, Row} from "antd";
 
 const Authorization = () => {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [errorMessage, setErrorMessage] = useState(null);
+    const [input, setInput] = useState({
+        login: "",
+        password: "",
+    });
 
-    const handleSubmit = async (event) => {
-        event.preventDefault();
-
-        console.log(`Отправлено email: ${email}, пароль: ${password}`);
-
-        if (email === '' || password === '') {
-            setErrorMessage('Все поля обязательны');
-        } else {
-            setErrorMessage(null);
-            alert('Форма успешно отправлена!');
+    const auth = useAuth();
+    const handleSubmitEvent = (e) => {
+        e.preventDefault();
+        if (input.login !== "" && input.password !== "") {
+            auth.loginAction(input).then(r => "");
+            return;
         }
+        alert("Пожалуйста, укажите корректные данные");
+    };
+
+    const handleInput = (e) => {
+        const {name, value} = e.target;
+        setInput((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
     };
 
     return (
@@ -39,29 +46,32 @@ const Authorization = () => {
             <br/>
             <Row justify="center">
                 <Col span={12} offset={8}>
-                    <form onSubmit={handleSubmit} className="login-form">
-                        <h3>Авторизация</h3>
-                        {errorMessage && <div className="alert-error">{errorMessage}</div>}
-                        <label htmlFor="email">Email:</label>
-                        <input
-                            type="email"
-                            id="email"
-                            placeholder="Введите email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                        />
-                        <br/>
-                        <label htmlFor="password">Пароль:</label>
-                        <input
-                            type="password"
-                            id="password"
-                            placeholder="Введите пароль"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                        />
-                        <button type="submit">Войти</button>
+                    <form className="login-form" onSubmit={handleSubmitEvent}>
+                        <Form.Item>
+                            <label htmlFor="login">Логин:</label>
+                            <Input
+                                type="login"
+                                id="user-login"
+                                name="login"
+                                placeholder="Введите логин"
+                                aria-describedby="user-login"
+                                aria-invalid="false"
+                                onChange={handleInput}
+                            />
+                        </Form.Item>
+                        <Form.Item>
+                            <label htmlFor="password">Пароль:</label>
+                            <Input.Password
+                                type="password"
+                                id="password"
+                                name="password"
+                                placeholder="Введите пароль"
+                                aria-describedby="user-password"
+                                aria-invalid="false"
+                                onChange={handleInput}
+                            />
+                        </Form.Item>
+                        <Button type="primary" htmlType="submit">Войти</Button>
                     </form>
                 </Col>
             </Row>

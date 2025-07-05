@@ -1,4 +1,5 @@
 import React, {useState} from 'react';
+import {useAuth} from "../authorizationProvider/index";
 import pdfToText from 'react-pdftotext';
 import './index.css';
 import {InboxOutlined} from '@ant-design/icons';
@@ -9,6 +10,7 @@ const PdfDragAndDropUploader = () => {
 
     const [textForSummarize, setTextForSummarize] = useState('');
     const [downloading, setDownloading] = useState(false);
+    const auth = useAuth();
 
     const handleFileChange = async ({fileList}) => {
         if (downloading) {
@@ -68,26 +70,31 @@ const PdfDragAndDropUploader = () => {
     return (
         <div>
             <div className="upload-center-container">
-                <Form.Item>
-                    <Form.Item name="dragger" valuePropName="fileList" getValueFromEvent={normFile} noStyle>
-                        <Upload.Dragger name="files" onChange={handleFileChange} multiple>
-                            <p className="ant-upload-drag-icon"><InboxOutlined/></p>
-                            <p className="ant-upload-text">Щелкните или перетащите файл в эту область для загрузки</p>
-                            <p className="ant-upload-hint">Поддержка загрузки одного или нескольких файлов.</p>
-                        </Upload.Dragger>
+                <Form>
+                    <Form.Item>
+                        <Form.Item name="dragger" valuePropName="fileList" getValueFromEvent={normFile} noStyle>
+                            <Upload.Dragger name="files" onChange={handleFileChange} multiple>
+                                <p className="ant-upload-drag-icon"><InboxOutlined/></p>
+                                <p className="ant-upload-text">Щелкните или перетащите файл в эту область для
+                                    загрузки</p>
+                                <p className="ant-upload-hint">Поддержка загрузки одного или нескольких файлов.</p>
+                            </Upload.Dragger>
+                        </Form.Item>
+                        <br/>
+                        <br/>
+                        <br/>
+                        <Form.Item style={{display: 'flex', justifyContent: 'center'}}>
+                            <Button type={"primary"} disabled={downloading} onClick={downloadPresentation}>
+                                Суммаризировать презентации
+                            </Button>
+                        </Form.Item>
+                        <Form.Item style={{display: 'flex', justifyContent: 'center'}}>
+                            <Button type={"primary"} danger onClick={() => auth.logOut()} className="btn-submit">
+                                Выход
+                            </Button>
+                        </Form.Item>
                     </Form.Item>
-                    <br/>
-                    <br/>
-                    <br/>
-                    <Form.Item style={{ display: 'flex', justifyContent: 'center' }}>
-                        <Button  type={"primary"} disabled={downloading} onClick={downloadPresentation}>
-                            Суммаризировать презентации
-                        </Button>
-                    </Form.Item>
-                </Form.Item>
-            </div>
-            <div>
-
+                </Form>
             </div>
         </div>
     );
