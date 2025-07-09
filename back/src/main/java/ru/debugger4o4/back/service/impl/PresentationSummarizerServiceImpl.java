@@ -13,10 +13,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import ru.debugger4o4.back.service.PresentationSummarizerService;
 
-@Component
+
+@Service
 public class PresentationSummarizerServiceImpl implements PresentationSummarizerService {
 
     private final Logger logger = LoggerFactory.getLogger(PresentationSummarizerServiceImpl.class);
