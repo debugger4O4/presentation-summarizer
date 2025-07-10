@@ -7,7 +7,7 @@ import lombok.Data;
 @Data
 @Builder
 @AllArgsConstructor
-public class Message {
-    private String role;
-    private String content;
+public class RequestSummarizeData {
+    private int slidesCount;
+    private String textForSummarize;
 }

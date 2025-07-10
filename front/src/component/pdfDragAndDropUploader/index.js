@@ -3,11 +3,12 @@ import {useAuth} from "../authorizationProvider/index";
 import pdfToText from 'react-pdftotext';
 import './index.css';
 import {InboxOutlined} from '@ant-design/icons';
-import {Button, Form, Upload} from 'antd';
+import {Button, Form, Select, Upload} from 'antd';
 import axios from 'axios';
 
 const PdfDragAndDropUploader = () => {
 
+    const [slidesCount, setSlidesCount] = useState(0);
     const [textForSummarize, setTextForSummarize] = useState('');
     const [downloading, setDownloading] = useState(false);
     const auth = useAuth();
@@ -21,7 +22,20 @@ const PdfDragAndDropUploader = () => {
             if (!file.originFileObj) {
                 return null;
             }
-            return pdfToText(file.originFileObj);
+            switch (file.type) {
+                case 'application/pdf':
+                    return pdfToText(file.originFileObj);
+                case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        return e.target.result;
+                    };
+                    return '';
+                case 'text/plain':
+                    return new Promise(async resolve => resolve(await file.originFileObj.text()));
+                default:
+                    return null;
+            }
         });
         const texts = await Promise.allSettled(promises.filter(Boolean));
         let content = '';
@@ -40,7 +54,10 @@ const PdfDragAndDropUploader = () => {
             const response = await axios({
                 url: 'http://localhost:8080/summarize/getSummarize',
                 method: 'POST',
-                data: {textForSummarize},
+                data: {
+                    slidesCount,
+                    textForSummarize
+                },
                 responseType: 'blob', // Важно указать blob для бинарных данных.
             });
 
@@ -67,6 +84,19 @@ const PdfDragAndDropUploader = () => {
         return e && e.fileList;
     };
 
+    const options = [];
+    for (let i = 1; i <= 20; i++) {
+        const value = i;
+        options.push({
+            label: value,
+            value
+        });
+    }
+
+    const handleChange = value => {
+       setSlidesCount(value);
+    };
+
     return (
         <div>
             <div className="upload-center-container">
@@ -83,6 +113,14 @@ const PdfDragAndDropUploader = () => {
                         <br/>
                         <br/>
                         <br/>
+                        <Form.Item style={{display: 'flex', justifyContent: 'center'}}>
+                            <Select
+                                allowClear
+                                options={options}
+                                placeholder="Количество слайдов"
+                                onChange={handleChange}
+                            />
+                        </Form.Item>
                         <Form.Item style={{display: 'flex', justifyContent: 'center'}}>
                             <Button type={"primary"} disabled={downloading} onClick={downloadPresentation}>
                                 Суммаризировать презентации

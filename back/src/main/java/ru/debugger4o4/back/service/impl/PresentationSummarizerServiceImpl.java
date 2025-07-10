@@ -14,17 +14,25 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import ru.debugger4o4.back.dto.RequestSummarizeData;
+import ru.debugger4o4.back.service.GigaChatService;
 import ru.debugger4o4.back.service.PresentationSummarizerService;
 
 
 @Service
 public class PresentationSummarizerServiceImpl implements PresentationSummarizerService {
 
+    private final GigaChatService gigaChatService;
+
     private final Logger logger = LoggerFactory.getLogger(PresentationSummarizerServiceImpl.class);
 
-    @Override
-    public ResponseEntity<byte[]> getSummarize(String textForSummarize) {
+    public PresentationSummarizerServiceImpl(GigaChatService gigaChatService) {
+        this.gigaChatService = gigaChatService;
+    }
 
+    @Override
+    public ResponseEntity<byte[]> getSummarize(RequestSummarizeData requestSummarizeData) {
+        String textForSummarize = gigaChatService.sendQuery(requestSummarizeData);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try (XMLSlideShow presentation = new XMLSlideShow()) {
             XSLFSlide slide = presentation.createSlide();
@@ -37,11 +45,9 @@ public class PresentationSummarizerServiceImpl implements PresentationSummarizer
             logger.error("PresentationSummarizerServiceImpl Exception in getSummarize: {}", e.getMessage());
         }
         byte[] bytes = outputStream.toByteArray();
-
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=summarize.pptx");
         headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE);
-
         return ResponseEntity
                 .ok()
                 .headers(headers)

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+import ru.debugger4o4.back.dto.RequestSummarizeData;
 import ru.debugger4o4.back.service.GigaChatService;
 import ru.debugger4o4.back.util.Util;
 import java.util.Collections;
@@ -30,25 +31,6 @@ public class GigaChatServiceImpl implements GigaChatService {
     private String rqUID;
     @Value("${gigachat.openapi.key}")
     private String openApiKey;
-    @Value("${gigachat.client.id}")
-    private static String clientId;
-
-    private static final String payload = """
-        {
-          "model": "%s",
-          "messages": [
-            {
-              "role": "user",
-              "content": "Суммризируй текст и сделай презентацию на 10 слайдов с картинками."
-            }
-          ],
-          "n": 1,
-          "stream": false,
-          "max_tokens": 512,
-          "repetition_penalty": 1,
-          "update_interval": 0
-        }
-        """.formatted("GigaChat-Max");
 
     private final Util util;
 
@@ -59,8 +41,28 @@ public class GigaChatServiceImpl implements GigaChatService {
     }
 
     @Override
-    public String sendQuery(String s) {
+    public String sendQuery(RequestSummarizeData requestSummarizeData) {
         util.setCertificates();
+        int slidesCount = requestSummarizeData.getSlidesCount();
+        String textForSummarize = requestSummarizeData.getTextForSummarize().replaceAll("[^а-яА-Яa-zA-Z0-9 ]", "");
+        String payload = """
+        {
+          "model": "%s",
+          "messages": [
+            {
+              "role": "user",
+              "content": "Суммаризируй текст и сделай презентацию с текстом, картинками, графиками и статистикой. \
+                         Количество слайдов = %d. Текст для суммаризации: \
+                         %s" \
+            }
+          ],
+          "n": 1,
+          "stream": false,
+          "max_tokens": 512,
+          "repetition_penalty": 1,
+          "update_interval": 0
+        }
+        """.formatted("GigaChat-Max", slidesCount, textForSummarize);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
@@ -68,15 +70,14 @@ public class GigaChatServiceImpl implements GigaChatService {
         HttpEntity<?> entity = new HttpEntity<>(payload, headers);
         RestTemplate restTemplate = new RestTemplate();
         try {
-            ResponseEntity<String> response = restTemplate.exchange(getModelsUrl, HttpMethod.GET, entity, String.class);
-            logger.info("GigaChatServiceImpl getModels: {}", response.getBody());
-            return response.getBody();
+            ResponseEntity<String> response = restTemplate.exchange(sendQueryUrl, HttpMethod.POST, entity, String.class);
+            return util.getContent(response.getBody());
         } catch (Exception e) {
             // Если произошел сбой, попытка обновить токен и выполнить запрос повторно.
+            logger.info("GigaChatServiceImpl sendQuery error or reissue of the token: {}", e.getMessage());
             headers.setBearerAuth(getToken());
-            ResponseEntity<String> response = restTemplate.exchange(getModelsUrl, HttpMethod.GET, entity, String.class);
-            logger.info("GigaChatServiceImpl getModels after retry: {}", response.getBody());
-            return response.getBody();
+            ResponseEntity<String> response = restTemplate.exchange(sendQueryUrl, HttpMethod.POST, entity, String.class);
+            return util.getContent(response.getBody());
         }
     }
 
@@ -90,12 +91,12 @@ public class GigaChatServiceImpl implements GigaChatService {
         RestTemplate restTemplate = new RestTemplate();
         try {
             ResponseEntity<String> response = restTemplate.exchange(getModelsUrl, HttpMethod.GET, entity, String.class);
-            logger.info("getModels: {}", response.getBody());
+            logger.info("GigaChatServiceImpl getModels: {}", response.getBody());
         } catch (Exception e) {
             // Если произошел сбой, попытка обновить токен и выполнить запрос повторно.
             headers.setBearerAuth(getToken());
             ResponseEntity<String> response = restTemplate.exchange(getModelsUrl, HttpMethod.GET, entity, String.class);
-            logger.info("getModels after retry: {}", response.getBody());
+            logger.info("GigaChatServiceImpl getModels after retry: {}", response.getBody());
         }
     }
 

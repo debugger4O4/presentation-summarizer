@@ -6,15 +6,14 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import java.io.FileInputStream;
 import java.security.KeyStore;
-
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import ru.debugger4o4.back.dto.Promt;
+import ru.debugger4o4.back.dto.ResponseBodyData;
 
 @Component
 public class Util {
@@ -64,10 +63,16 @@ public class Util {
         return null;
     }
 
-    @Data
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    static class ResponseBodyData {
-        private String access_token;
+    public String getContent(String responseBody) {
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            Promt promt = mapper.readValue(responseBody, Promt.class);
+            if (promt.getChoices() != null && promt.getChoices().size() > 0) {
+                return promt.getChoices().get(0).getMessage().getContent();
+            }
+        } catch (JsonProcessingException e) {
+            logger.error("Util exception in getContent: {}", e.getMessage());
+        }
+        return null;
     }
-
 }

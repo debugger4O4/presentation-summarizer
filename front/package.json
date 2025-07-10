@@ -7,8 +7,11 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
+    "docx": "^9.5.1",
+    "docx-reader": "^0.0.10",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-file-reader": "^1.1.4",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
