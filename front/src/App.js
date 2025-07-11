@@ -1,7 +1,7 @@
 import React from "react";
 import {Route, Routes} from "react-router-dom";
-import PdfDragAndDropUploader from "./component/pdfDragAndDropUploader";
-import AuthorizationComponent from "./component/authorization";
+import PdfDragAndDropUploader from "./page/pdfDragAndDropUploader";
+import AuthorizationComponent from "./page/authorization";
 import AuthorizationProvider from "./component/authorizationProvider";
 import PrivateRoute from "./component/privateRoute";
 

@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {useAuth} from "../authorizationProvider/index";
+import {useAuth} from "../../component/authorizationProvider";
 import pdfToText from 'react-pdftotext';
 import './index.css';
 import {InboxOutlined} from '@ant-design/icons';

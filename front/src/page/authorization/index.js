@@ -1,5 +1,5 @@
 import {useState} from "react";
-import {useAuth} from "../authorizationProvider/index";
+import {useAuth} from "../../component/authorizationProvider";
 import './index.css';
 import {Button, Col, Form, Input, Row} from "antd";
 
