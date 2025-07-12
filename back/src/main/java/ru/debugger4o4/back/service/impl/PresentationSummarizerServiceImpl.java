@@ -32,14 +32,15 @@ public class PresentationSummarizerServiceImpl implements PresentationSummarizer
 
     @Override
     public ResponseEntity<byte[]> getSummarize(RequestSummarizeData requestSummarizeData) {
-        String textForSummarize = gigaChatService.sendQuery(requestSummarizeData);
+        String technicalTask = gigaChatService.sendQueryForTechnicalTask(requestSummarizeData);
+        logger.info(technicalTask);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try (XMLSlideShow presentation = new XMLSlideShow()) {
             XSLFSlide slide = presentation.createSlide();
             XSLFTextBox shape = slide.createTextBox();
             XSLFTextParagraph p = shape.addNewTextParagraph();
             XSLFTextRun r = p.addNewTextRun();
-            r.setText(textForSummarize);
+            r.setText(technicalTask);
             presentation.write(outputStream);
         } catch (IOException e) {
             logger.error("PresentationSummarizerServiceImpl Exception in getSummarize: {}", e.getMessage());

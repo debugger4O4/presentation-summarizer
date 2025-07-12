@@ -35,7 +35,7 @@ public class Util {
             sslContext.init(null, trustManagers, new java.security.SecureRandom());
             HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
         } catch (Exception e) {
-            logger.error(e.getMessage());
+            logger.error("Util exception in setCertificates: {}", e.getMessage());
         }
     }
 
