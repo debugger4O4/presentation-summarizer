@@ -5,6 +5,7 @@ import lombok.Data;
 @Data
 public class SlideData {
     private String title;
+    private String subtitle;
     private String text;
     private String image;
 }

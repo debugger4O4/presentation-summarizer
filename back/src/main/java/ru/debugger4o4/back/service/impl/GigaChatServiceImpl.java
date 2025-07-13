@@ -1,10 +1,17 @@
 package ru.debugger4o4.back.service.impl;
 
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+import chat.giga.client.GigaChatClient;
+import chat.giga.client.auth.AuthClient;
+import chat.giga.client.auth.AuthClientBuilder;
+import chat.giga.http.client.HttpClientException;
+import chat.giga.model.ModelResponse;
+import chat.giga.model.Scope;
+import chat.giga.model.completion.ChatMessage;
+import chat.giga.model.completion.CompletionRequest;
+import chat.giga.model.completion.CompletionResponse;
+import org.apache.poi.sl.usermodel.PictureData;
+import org.apache.poi.xslf.usermodel.XSLFPictureShape;
+import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,9 +28,16 @@ import ru.debugger4o4.back.dto.RequestSummarizeData;
 import ru.debugger4o4.back.service.GigaChatService;
 import ru.debugger4o4.back.util.Util;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.awt.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
 import java.util.Collections;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+
 import static ru.debugger4o4.back.dictionary.GigaChatModels.GigaChat2Max;
 
 
@@ -42,7 +56,6 @@ public class GigaChatServiceImpl implements GigaChatService {
     private String openApiKey;
 
     private final Util util;
-    private static Util util1;
 
     private static final Logger logger = LoggerFactory.getLogger(Util.class);
 
@@ -56,23 +69,26 @@ public class GigaChatServiceImpl implements GigaChatService {
         int slidesCount = requestSummarizeData.getSlidesCount();
         String textForSummarize = requestSummarizeData.getTextForSummarize().replaceAll("[^а-яА-Яa-zA-Z0-9 ]", "");
         String payload = """
-        {
-          "model": "%s",
-          "messages": [
-            {
-              "role": "user",
-              "content": "Суммаризируй текст и сделай презентацию с текстом, картинками, графиками и статистикой. \
-                         Количество слайдов = %d. Текст для суммаризации: \
-                         %s" \
-            }
-          ],
-          "n": 1,
-          "stream": false,
-          "max_tokens": 512,
-          "repetition_penalty": 1,
-          "update_interval": 0
-        }
-        """.formatted(GigaChat2Max.getValue(), slidesCount, textForSummarize);
+                {
+                  "model": "%s",
+                  "messages": [
+                    {
+                      "role": "user",
+                      "content": "Суммаризируй текст и сделай презентацию с текстом, картинками, графиками и статистикой. \
+                                 Количество слайдов = %d. Каждый слайд дожен иметь флаг-слово **Слайд**, каждый заголовок дожен \
+                                 иметь флаг-слово **Заголовок**, каждая картинка должна иметь флаг-слово **Картинка**, \
+                                 каждый график должен иметь флаг-слово **График**, каждая статистика должна имет флаг-слово \
+                                 **Статистика**. Текст для суммаризации: \
+                                 %s"
+                    }
+                  ],
+                  "n": 1,
+                  "stream": false,
+                  "max_tokens": 512,
+                  "repetition_penalty": 1,
+                  "update_interval": 0
+                }
+                """.formatted(GigaChat2Max.getValue(), slidesCount, textForSummarize);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
@@ -91,64 +107,49 @@ public class GigaChatServiceImpl implements GigaChatService {
         }
     }
 
-//    private void sendQueryForDownloadImage(String imageUrl) {
-//        util1.setCertificates();
-//        String payload = """
-//                {
-//                  "model": "%s",
-//                  "messages": [
-//                    {
-//                      "role": "user",
-//                      "content": ### Визуализация
-//                                         - **График**: Количество христианских и мусульманских территорий на Пиренейском полуострове в разные периоды Реконкисты.
-//                                         - **Картинка**: Карта Пиренейского полуострова с обозначением территорий, захваченных христианами в разные века.
-//                                         - **Статистика**: Доля христианских и мусульманских территорий в начале и конце Реконкисты.
-//                    }
-//                  ],
-//                  "n": 1,
-//                  "stream": false,
-//                  "max_tokens": 512,
-//                  "repetition_penalty": 1,
-//                  "update_interval": 0
-//                }
-//                """.formatted(GigaChat2Max.getValue());
-//        HttpHeaders headers = new HttpHeaders();
-//        headers.setContentType(MediaType.APPLICATION_JSON);
-//        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-//        headers.setBearerAuth(getToken());
-//        HttpEntity<?> entity = new HttpEntity<>(payload, headers);
-//        RestTemplate restTemplate = new RestTemplate();
-//        try (CloseableHttpClient httpclient = HttpClients.createDefault()) {
-//            HttpGet request = new HttpGet(imageUrl);
-//
-//            try (CloseableHttpResponse response = httpclient.execute(request)) {
-//                if (response.getStatusLine().getStatusCode() != 200) {
-//                    throw new RuntimeException("Ошибка HTTP: " + response.getStatusLine());
-//                }
-//
-//                org.apache.http.HttpEntity entity = response.getEntity();
-//                byte[] bytes = EntityUtils.toByteArray(entity); // Получаем байтовый массив изображения
-//
-//                Files.write(Paths.get("downloaded_image.jpg"), bytes); // Сохраняем файл
-//            }
-//        }
-//        try {
-//            org.apache.http.HttpEntity entity = response.getEntity();
-//            byte[] bytes = EntityUtils.toByteArray(entity); // Получаем байтовый массив изображения
-//
-//            Files.write(Paths.get("downloaded_image.jpg"), bytes);
-//        } catch (Exception e) {
-//            // Если произошел сбой, попытка обновить токен и выполнить запрос повторно.
-//            logger.info("GigaChatServiceImpl sendQuery error or reissue of the token: {}", e.getMessage());
-//            headers.setBearerAuth(getToken());
-//            ResponseEntity<String> response = restTemplate.exchange(sendQueryUrl, HttpMethod.POST, entity, String.class);
-//            return util.getContent(response.getBody());
-//        }
-//    }
-//
-//    public static void main(String[] args) {
-//        sendQueryForDownloadImage(imageUrl);
-//    }
+    @Override
+    public void sendQueryToGenerateAndDownloadImage(XSLFSlide slide, String imageDescription) {
+        GigaChatClient client = GigaChatClient.builder()
+                .authClient(AuthClient.builder()
+                        .withOAuth(AuthClientBuilder.OAuthBuilder.builder()
+                                .scope(Scope.GIGACHAT_API_PERS)
+                                .authKey(openApiKey)
+                                .build())
+                        .build())
+                .build();
+        try {
+            // Получаем список моделей.
+            ModelResponse modelResponse = client.models();
+            if (modelResponse != null) {
+                CompletionResponse completionsResponse = client.completions(CompletionRequest.builder()
+                        .model(modelResponse.data().get(0).id())
+                        .messages(List.of(
+                                ChatMessage.builder()
+                                        .role(ChatMessage.Role.SYSTEM)
+                                        .build(),
+                                ChatMessage.builder()
+                                        .role(ChatMessage.Role.USER)
+                                        .content(imageDescription)
+                                        .build()))
+                        .build());
+                String content = completionsResponse.choices().get(0).message().content();
+                Pattern pattern = Pattern.compile("src=\"([^\"]*)\"");
+                Matcher matcher = pattern.matcher(content);
+                String src = "";
+                if (matcher.find()) {
+                    src = matcher.group(1);
+                }
+                try (InputStream input = new URL("https://gigachat.devices.sberbank.ru/api/v1/files/" + src + "/content").openStream()) {
+                    XSLFPictureShape picture = slide.createPicture((PictureData) input);
+                    picture.setAnchor(new Rectangle(100, 400, 400, 300));
+                }
+            }
+        } catch (HttpClientException | IOException ex) {
+            logger.error("GigaChatServiceImpl downloadImageFromUrl exception: {}", ex.getMessage());
+        }
+
+    }
+
 
     @Override
     public void getModels() {

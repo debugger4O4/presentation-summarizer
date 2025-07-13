@@ -1,52 +1,39 @@
 package ru.debugger4o4.back.service.impl;
 
-import chat.giga.client.GigaChatClient;
-import chat.giga.client.auth.AuthClient;
-import chat.giga.client.auth.AuthClientBuilder;
-import chat.giga.http.client.HttpClientException;
-import chat.giga.model.Scope;
-import chat.giga.model.completion.ChatMessage;
-import chat.giga.model.completion.CompletionRequest;
-import org.apache.http.HttpEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFTextBox;
 import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
 import org.apache.poi.xslf.usermodel.XSLFTextRun;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ru.debugger4o4.back.dto.SlideData;
 import ru.debugger4o4.back.service.CraftService;
-import org.apache.poi.ss.usermodel.WorkbookFactory;
-import org.apache.poi.xssf.usermodel.*;
-import org.springframework.stereotype.Service;
-import ru.debugger4o4.back.service.CraftService;
+import ru.debugger4o4.back.service.GigaChatService;
+import ru.debugger4o4.back.util.Util;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.awt.*;
+import java.io.ByteArrayOutputStream;
 import java.util.Arrays;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import java.io.File;
-import java.io.FileOutputStream;
-import java.util.Arrays;
 
 @Service
 public class CraftServiceImpl implements CraftService {
 
-    private static String task = """
+    private final GigaChatService gigaChatService;
+
+    private static final Logger logger = LoggerFactory.getLogger(Util.class);
+
+
+    public CraftServiceImpl(GigaChatService gigaChatService) {
+        this.gigaChatService = gigaChatService;
+    }
+
+    @Override
+    public void completeTechnicalTask(String technicalTask, ByteArrayOutputStream outputStream) {
+        technicalTask = """
             **Слайд 1: Введение**
 
             **Название:** Реконкиста \s
@@ -99,103 +86,60 @@ public class CraftServiceImpl implements CraftService {
 
 
             """;
-
-    public static void main(String[] args) {
-        long slidesCount = Arrays
-                .stream(task.split("(\\*\\*Слайд )"))
+        String[] slides = Arrays
+                .stream(technicalTask.split("(\\*\\*Слайд )"))
                 .filter(f -> !f.isEmpty())
-                .count();
-
-        // Предполагаемый URL изображения
-        String imageUrl = "https://giga.chat/gigachat/files/public/generated/4398cbfe-d89d-48a2-9425-d9a9887eb2fb";
-
-        downloadImageFromUrl();
-
+                .map(String::trim)
+                .toArray(String[]::new);
+        createPresentation(slides, outputStream);
     }
 
-    private static void downloadImageFromUrl() {
-        GigaChatClient client = GigaChatClient.builder()
-                .authClient(AuthClient.builder()
-                        .withOAuth(AuthClientBuilder.OAuthBuilder.builder()
-                                .scope(Scope.GIGACHAT_API_CORP)
-                                .authKey("OWU5ZmY0NzItNjQ5NS00Y2FmLTkzZjMtZjNmZmM4ZTA3ZGM2OjIyMjM3N2QxLWRiNzItNDY0OS04ZmU2LWFmNzU5NDEyNTNjZQ==")
-                                .build())
-                        .build())
-                .build();
-        try {
-            // Получаем список моделей
-            var modelResponse = client.models();
-            if (modelResponse != null) {
-                var completionsResponse = client.completions(CompletionRequest.builder()
-                        .model(modelResponse.data().get(0).id())
-                        .messages(List.of(
-                                ChatMessage.builder()
-                                        .role(ChatMessage.Role.SYSTEM)
-                                        .content("Ты — художник Густав Климт")
-                                        .build(),
-                                ChatMessage.builder()
-                                        .role(ChatMessage.Role.USER)
-                                        .content("Нарисуй розового кота")
-                                        .build()))
-                        .build());
-                String content = completionsResponse.choices().get(0).message().content();
-                System.out.println(content);
-            }
-        } catch (HttpClientException ex) {
-            System.out.println(ex.statusCode() + " " + ex.bodyAsString());
-        }
-    }
-
-    @Override
-    public void completeTechnicalTask(String technicalTask) {
-
-    }
-
-    private void createPresentation(String[] slides) {
-        try (XMLSlideShow presentation = new XMLSlideShow();
-             FileOutputStream out = new FileOutputStream(new File("presentation.pptx"))) {
+    private void createPresentation(String[] slides, ByteArrayOutputStream outputStream) {
+        try (XMLSlideShow presentation = new XMLSlideShow()) {
             for (String slideContent : slides) {
                 XSLFSlide slide = presentation.createSlide();
                 XSLFTextBox shape = slide.createTextBox();
+                shape.setAnchor(new Rectangle(100, 100, 600, 300));
                 XSLFTextParagraph p = shape.addNewTextParagraph();
                 XSLFTextRun r = p.addNewTextRun();
-                r.setText(slideContent);
                 SlideData slideData = extractSlideData(slideContent);
+                r.setText(slideData.getText());
                 String imageDescription = slideData.getImage();
                 if (imageDescription != null && !imageDescription.isEmpty()) {
-                    String generatedImageUrl = generateImage(imageDescription);
-                    // TODO: Добавить загрузку и размещение изображения
+                    gigaChatService.sendQueryToGenerateAndDownloadImage(slide, imageDescription);
                 }
-                presentation.write(out);
+                presentation.write(outputStream);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("CraftServiceImpl exception on createPresentation(): {}", e.getMessage());
         }
     }
 
     private SlideData extractSlideData(String slideContent) {
         SlideData data = new SlideData();
-        Pattern titlePattern = Pattern.compile("\\*\\*Слайд \\d+: (.+)");
+
+        Pattern titlePattern = Pattern.compile("Название:([\\s\\S]*?)Подзаголовок:([\\s\\S]*?)Текст:");
         Matcher matcher = titlePattern.matcher(slideContent);
         if (matcher.find()) {
-            data.setTitle(matcher.group(1));
+            data.setTitle(matcher.group(1).trim());
+            data.setSubtitle(matcher.group(2).trim());
         }
-        Pattern textPattern = Pattern.compile("\\*\\*Текст:\\s*([\\s\\S]*?)\\*\\*");
+
+        Pattern textPattern = Pattern.compile("Текст:([\\s\\S]*?)Картинка:");
         matcher = textPattern.matcher(slideContent);
         if (matcher.find()) {
-            data.setText(matcher.group(1));
+            data.setText(matcher.group(1).trim());
         }
-        Pattern imagePattern = Pattern.compile("(\\*\\*Картинка:\\s*([\\s\\S]*?)\\*\\*)|(\\*\\*Визуализация:\\s*([\\s\\S]*?)\\*\\*)");
+
+        Pattern imagePattern = Pattern.compile("Картинка:([\\s\\S]*)");
         matcher = imagePattern.matcher(slideContent);
         if (matcher.find()) {
-            data.setImage(matcher.group(1));
+            data.setImage(matcher.group(1).trim());
         }
+
         return data;
     }
 
-    private String generateImage(String description) {
-        // TODO: Реализовать запрос к API GigaChat
-        return "URL_OF_GENERATED_IMAGE";
-    }
+
 }
 
