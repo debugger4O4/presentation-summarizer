@@ -10,6 +10,9 @@ import chat.giga.model.completion.ChatMessage;
 import chat.giga.model.completion.CompletionRequest;
 import chat.giga.model.completion.CompletionResponse;
 import org.apache.poi.sl.usermodel.PictureData;
+import org.apache.poi.util.IOUtils;
+import org.apache.poi.xslf.usermodel.XMLSlideShow;
+import org.apache.poi.xslf.usermodel.XSLFPictureData;
 import org.apache.poi.xslf.usermodel.XSLFPictureShape;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.slf4j.Logger;
@@ -40,6 +43,7 @@ import java.util.regex.Pattern;
 
 
 import static ru.debugger4o4.back.dictionary.GigaChatModels.GigaChat2Max;
+import static ru.debugger4o4.back.dictionary.GigaChatModels.GigaChatPro;
 
 
 @Service
@@ -91,7 +95,7 @@ public class GigaChatServiceImpl implements GigaChatService {
                   "repetition_penalty": 1,
                   "update_interval": 0
                 }
-                """.formatted(GigaChat2Max.getValue(), slidesCount, textForSummarize);
+                """.formatted(GigaChatPro.getValue(), slidesCount, textForSummarize);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
@@ -111,7 +115,7 @@ public class GigaChatServiceImpl implements GigaChatService {
     }
 
     @Override
-    public void sendQueryToGenerateAndDownloadImage(XSLFSlide slide, String imageDescription) {
+    public void sendQueryToGenerateAndDownloadImage(XMLSlideShow presentation, XSLFSlide slide, String pictureDescription) {
         GigaChatClient client = GigaChatClient.builder()
                 .authClient(AuthClient.builder()
                         .withOAuth(AuthClientBuilder.OAuthBuilder.builder()
@@ -132,7 +136,7 @@ public class GigaChatServiceImpl implements GigaChatService {
                                         .build(),
                                 ChatMessage.builder()
                                         .role(ChatMessage.Role.USER)
-                                        .content(imageDescription)
+                                        .content(pictureDescription)
                                         .build()))
                         .build());
                 String content = completionsResponse.choices().get(0).message().content();
@@ -141,10 +145,13 @@ public class GigaChatServiceImpl implements GigaChatService {
                 String src = "";
                 if (matcher.find()) {
                     src = matcher.group(1);
-                }
-                try (InputStream input = new URL("https://gigachat.devices.sberbank.ru/api/v1/files/" + src + "/content").openStream()) {
-                    XSLFPictureShape picture = slide.createPicture((PictureData) input);
-                    picture.setAnchor(new Rectangle(100, 400, 400, 300));
+                    try (InputStream input = new URL("https://gigachat.devices.sberbank.ru/api/v1/files/" + src + "/content").openStream()) {
+                        // TODO разобраться с этой хуйней.
+                        byte[] pictureData = IOUtils.toByteArray(input);
+                        XSLFPictureData pd = presentation.addPicture(pictureData, PictureData.PictureType.PNG);
+                        XSLFPictureShape picture = slide.createPicture(pd);
+                        picture.setAnchor(new Rectangle(100, 400, 400, 300));
+                    }
                 }
             }
         } catch (HttpClientException | IOException ex) {

@@ -16,10 +16,10 @@ import ru.debugger4o4.back.util.Util;
 
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
-import java.io.FileOutputStream;
 import java.util.Arrays;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.HashMap;
+import java.util.Map;
+
 
 @Service
 public class CraftServiceImpl implements CraftService {
@@ -37,7 +37,7 @@ public class CraftServiceImpl implements CraftService {
     @Override
     public void completeTechnicalTask(String technicalTask, ByteArrayOutputStream outputStream) {
         String[] slides = Arrays
-                .stream(technicalTask.split("(\\*\\*Слайд )"))
+                .stream(technicalTask.split("(\\*\\*Слайд \\d\\*\\*)|(\\*\\*Слайд\\*\\*)"))
                 .filter(f -> !f.isEmpty())
                 .map(String::trim)
                 .toArray(String[]::new);
@@ -49,63 +49,70 @@ public class CraftServiceImpl implements CraftService {
         try (
                 XMLSlideShow presentation = new XMLSlideShow();
                 // Для тестов.
-                FileOutputStream out = new FileOutputStream("powerpoint.pptx")
+//                FileOutputStream out = new FileOutputStream("powerpoint.pptx")
         ) {
             for (String slideContent : slides) {
                 XSLFSlide slide = presentation.createSlide();
                 XSLFTextBox shape = slide.createTextBox();
                 shape.setAnchor(new Rectangle(50, 50, 600, 300));
                 XSLFTextParagraph titleParagraph = shape.addNewTextParagraph();
-                XSLFTextParagraph subTitleParagraph = shape.addNewTextParagraph();
                 XSLFTextParagraph textParagraph = shape.addNewTextParagraph();
                 XSLFTextRun title = titleParagraph.addNewTextRun();
-                XSLFTextRun subTitle = subTitleParagraph.addNewTextRun();
                 XSLFTextRun text = textParagraph.addNewTextRun();
                 SlideData slideData = extractSlideData(slideContent);
                 title.setText(slideData.getTitle());
                 title.setFontSize(36.0);
-                subTitle.setText(slideData.getSubtitle());
-                subTitle.setFontSize(24.0);
-                text.setText(slideData.getText());
-                text.setFontSize(12.0);
-                String imageDescription = slideData.getImage();
-//                if (imageDescription != null && !imageDescription.isEmpty()) {
-//                    gigaChatService.sendQueryToGenerateAndDownloadImage(slide, imageDescription);
-//                }
+                text.setText(
+                        slideData.getText() + "\n" +
+                        slideData.getStages() + "\n" +
+                        slideData.getReasons()
+                );
+                text.setFontSize(18.0);
+                if (!slideData.getImage().isEmpty()) {
+                    gigaChatService.sendQueryToGenerateAndDownloadImage(presentation, slide, slideData.getImage());
+                } else if (!slideData.getStatistic().isEmpty()) {
+                    gigaChatService.sendQueryToGenerateAndDownloadImage(presentation, slide, slideData.getStatistic());
+                } else if (!slideData.getGraphic().isEmpty()) {
+                    gigaChatService.sendQueryToGenerateAndDownloadImage(presentation, slide, slideData.getGraphic());
+                }
             }
-            presentation.write(out);
+            presentation.write(outputStream);
         } catch (Exception e) {
             logger.error("CraftServiceImpl exception on createPresentation(): {}", e.getMessage());
         }
     }
 
     private SlideData extractSlideData(String slideContent) {
-        SlideData data = new SlideData();
-
-        Pattern titlePattern = Pattern.compile("\\*\\*Название:\\*\\*([\\s\\S]*?)\\*\\*Подзаголовок:\\*\\*([\\s\\S]*?)\\*\\*Текст:\\*\\*");
-        Matcher matcher = titlePattern.matcher(slideContent);
-        if (matcher.find()) {
-            String title = matcher.group(1).trim();
-            String subtitle = matcher.group(2).trim();
-            data.setTitle(title);
-            data.setSubtitle(subtitle);
+        SlideData slide = new SlideData();
+        String[] blocks = Arrays.stream(slideContent.split("\\*\\*")).filter(f -> !f.isEmpty()).toArray(String[]::new);
+        Map<String, String> content = new HashMap<>();
+        for (int i = 1; i < blocks.length; i += 2) {
+            String key = cleanText(blocks[i - 1]).replaceAll(":", "");
+            String value = cleanText(blocks[i]);
+            if (!key.isEmpty() && !value.isEmpty()) {
+                content.put(key, value);
+            }
         }
+        slide.setTitle(content.getOrDefault("Заголовок", ""));
 
-        Pattern textPattern = Pattern.compile("\\*\\*Текст:\\*\\*([\\s\\S]*?)(?:\\*\\*(?:Картинка:\\*\\*|График:\\*\\*|Статистика:\\*\\*)|$)");
-        matcher = textPattern.matcher(slideContent);
-        if (matcher.find()) {
-            String text = matcher.group(1).trim();
-            data.setText(text);
-        }
+        slide.setText(content.getOrDefault("Текст", ""));
+        slide.setStages(content.getOrDefault("Причины", ""));
+        slide.setReasons(content.getOrDefault("Этапы", ""));
 
-        Pattern imagePattern = Pattern.compile("\\*\\*(?:Картинка:\\*\\*|График:\\*\\*|Статистика:\\*\\*)([\\s\\S]*?)(?:\\*\\*|$)");
-        matcher = imagePattern.matcher(slideContent);
-        if (matcher.find()) {
-            String image = matcher.group(1).trim();
-            data.setImage(image);
-        }
+        slide.setImage(content.getOrDefault("Картинка", ""));
+        slide.setGraphic(content.getOrDefault("График", ""));
+        slide.setStatistic(content.getOrDefault("Статистика", ""));
+        return slide;
+    }
 
-        return data;
+    private String cleanText(String text) {
+        return text
+                .replace("\n\n", "\n")
+                .replace("\r", "")
+                .replaceAll("^\\s+|\\s+$", "")
+                .replaceAll("\\s+", " ")
+                .replaceAll("\n\\s+", "\n")
+                .trim();
     }
 }
 
