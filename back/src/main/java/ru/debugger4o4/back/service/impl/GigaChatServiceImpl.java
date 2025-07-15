@@ -14,6 +14,7 @@ import org.apache.poi.xslf.usermodel.XSLFPictureShape;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -55,11 +56,12 @@ public class GigaChatServiceImpl implements GigaChatService {
     @Value("${gigachat.openapi.key}")
     private String openApiKey;
 
-    private final Util util;
+    private Util util;
 
     private static final Logger logger = LoggerFactory.getLogger(Util.class);
 
-    public GigaChatServiceImpl(Util util) {
+    @Autowired
+    public void setUtil(Util util) {
         this.util = util;
     }
 
@@ -78,7 +80,8 @@ public class GigaChatServiceImpl implements GigaChatService {
                                  Количество слайдов = %d. Каждый слайд дожен иметь флаг-слово **Слайд**, каждый заголовок дожен \
                                  иметь флаг-слово **Заголовок**, каждая картинка должна иметь флаг-слово **Картинка**, \
                                  каждый график должен иметь флаг-слово **График**, каждая статистика должна имет флаг-слово \
-                                 **Статистика**. Текст для суммаризации: \
+                                 **Статистика**. Не вставляй символ * внутри раздела **Текст**, пример как делать не надо: \
+                                 **VIII–XI века:**. Текст для суммаризации: \
                                  %s"
                     }
                   ],

@@ -1,12 +1,11 @@
 package ru.debugger4o4.back.service.impl;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 import java.io.ByteArrayOutputStream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ru.debugger4o4.back.dto.RequestSummarizeData;
 import ru.debugger4o4.back.service.CraftService;
@@ -17,13 +16,16 @@ import ru.debugger4o4.back.service.PresentationSummarizerService;
 @Service
 public class PresentationSummarizerServiceImpl implements PresentationSummarizerService {
 
-    private final GigaChatService gigaChatService;
-    private final CraftService craftService;
+    private GigaChatService gigaChatService;
+    private CraftService craftService;
 
-    private final Logger logger = LoggerFactory.getLogger(PresentationSummarizerServiceImpl.class);
-
-    public PresentationSummarizerServiceImpl(GigaChatService gigaChatService, CraftService craftService) {
+    @Autowired
+    public void setGigaChatService(GigaChatService gigaChatService) {
         this.gigaChatService = gigaChatService;
+    }
+
+    @Autowired
+    public void setCraftService(CraftService craftService) {
         this.craftService = craftService;
     }
 
