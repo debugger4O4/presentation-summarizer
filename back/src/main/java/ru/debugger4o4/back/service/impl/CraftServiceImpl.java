@@ -77,6 +77,7 @@ public class CraftServiceImpl implements CraftService {
                 }
             }
             presentation.write(outputStream);
+            outputStream.close();
         } catch (Exception e) {
             logger.error("CraftServiceImpl exception on createPresentation(): {}", e.getMessage());
         }

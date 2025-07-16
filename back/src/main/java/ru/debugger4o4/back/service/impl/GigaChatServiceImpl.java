@@ -10,7 +10,6 @@ import chat.giga.model.completion.ChatMessage;
 import chat.giga.model.completion.CompletionRequest;
 import chat.giga.model.completion.CompletionResponse;
 import org.apache.poi.sl.usermodel.PictureData;
-import org.apache.poi.util.IOUtils;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFPictureData;
 import org.apache.poi.xslf.usermodel.XSLFPictureShape;
@@ -24,18 +23,17 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import ru.debugger4o4.back.dto.RequestSummarizeData;
 import ru.debugger4o4.back.service.GigaChatService;
+import ru.debugger4o4.back.service.TokenService;
 import ru.debugger4o4.back.util.Util;
 
 import java.awt.*;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -43,7 +41,6 @@ import java.util.regex.Pattern;
 
 
 import static ru.debugger4o4.back.dictionary.GigaChatModels.GigaChat2Max;
-import static ru.debugger4o4.back.dictionary.GigaChatModels.GigaChatPro;
 
 
 @Service
@@ -51,22 +48,27 @@ public class GigaChatServiceImpl implements GigaChatService {
 
     @Value("${gigachat.get.model.url}")
     private String getModelsUrl;
-    @Value("${gigachat.get.token.url}")
-    private String getTokenUrl;
     @Value("${gigachat.send.query.url}")
     private String sendQueryUrl;
-    @Value("${gigachat.rq.uid}")
-    private String rqUID;
+    @Value("${gigachat.get.file.url}")
+    private String getFileUrl;
     @Value("${gigachat.openapi.key}")
     private String openApiKey;
 
     private Util util;
+
+    private TokenService tokenService;
 
     private static final Logger logger = LoggerFactory.getLogger(Util.class);
 
     @Autowired
     public void setUtil(Util util) {
         this.util = util;
+    }
+
+    @Autowired
+    public void setTokenUpdater(TokenService tokenService) {
+        this.tokenService = tokenService;
     }
 
     @Override
@@ -81,7 +83,7 @@ public class GigaChatServiceImpl implements GigaChatService {
                     {
                       "role": "user",
                       "content": "Суммаризируй текст и сделай презентацию с текстом, картинками, графиками и статистикой. \
-                                 Количество слайдов = %d. Каждый слайд дожен иметь флаг-слово **Слайд**, каждый заголовок дожен \
+                                 Количество слайдов = %d. Каждый слайд дожен иметь флаг-слово **Слайд <номер>**, каждый заголовок дожен \
                                  иметь флаг-слово **Заголовок**, каждая картинка должна иметь флаг-слово **Картинка**, \
                                  каждый график должен иметь флаг-слово **График**, каждая статистика должна имет флаг-слово \
                                  **Статистика**. Не вставляй символ * внутри раздела **Текст**, пример как делать не надо: \
@@ -95,23 +97,15 @@ public class GigaChatServiceImpl implements GigaChatService {
                   "repetition_penalty": 1,
                   "update_interval": 0
                 }
-                """.formatted(GigaChatPro.getValue(), slidesCount, textForSummarize);
+                """.formatted(GigaChat2Max.getValue(), slidesCount, textForSummarize);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-        headers.setBearerAuth(getToken());
+        headers.setBearerAuth(tokenService.getCurrentToken());
         HttpEntity<?> entity = new HttpEntity<>(payload, headers);
         RestTemplate restTemplate = new RestTemplate();
-        try {
-            ResponseEntity<String> response = restTemplate.exchange(sendQueryUrl, HttpMethod.POST, entity, String.class);
-            return util.getContent(response.getBody());
-        } catch (Exception e) {
-            // Если произошел сбой, попытка обновить токен и выполнить запрос повторно.
-            logger.info("GigaChatServiceImpl sendQuery error or reissue of the token: {}", e.getMessage());
-            headers.setBearerAuth(getToken());
-            ResponseEntity<String> response = restTemplate.exchange(sendQueryUrl, HttpMethod.POST, entity, String.class);
-            return util.getContent(response.getBody());
-        }
+        ResponseEntity<String> response = restTemplate.exchange(sendQueryUrl, HttpMethod.POST, entity, String.class);
+        return util.getContent(response.getBody());
     }
 
     @Override
@@ -136,7 +130,7 @@ public class GigaChatServiceImpl implements GigaChatService {
                                         .build(),
                                 ChatMessage.builder()
                                         .role(ChatMessage.Role.USER)
-                                        .content(pictureDescription)
+                                        .content("Нарисуй изображение: " + pictureDescription)
                                         .build()))
                         .build());
                 String content = completionsResponse.choices().get(0).message().content();
@@ -145,54 +139,40 @@ public class GigaChatServiceImpl implements GigaChatService {
                 String src = "";
                 if (matcher.find()) {
                     src = matcher.group(1);
-                    try (InputStream input = new URL("https://gigachat.devices.sberbank.ru/api/v1/files/" + src + "/content").openStream()) {
-                        // TODO разобраться с этой хуйней.
-                        byte[] pictureData = IOUtils.toByteArray(input);
-                        XSLFPictureData pd = presentation.addPicture(pictureData, PictureData.PictureType.PNG);
-                        XSLFPictureShape picture = slide.createPicture(pd);
-                        picture.setAnchor(new Rectangle(100, 400, 400, 300));
-                    }
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.setContentType(MediaType.APPLICATION_JSON);
+                    headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+                    headers.setBearerAuth(tokenService.getCurrentToken());
+                    HttpEntity<?> entity = new HttpEntity<>(null, headers);
+                    RestTemplate restTemplate = new RestTemplate();
+                    ResponseEntity<byte[]> response = restTemplate.exchange(getFileUrl + "/" + src + "/content", HttpMethod.GET, entity, byte[].class);
+
+//                        // Для теста.
+//                        try (FileOutputStream fos = new FileOutputStream("image.jpg")) {
+//                            fos.write(response.getBody());
+//                            fos.flush();
+//                        }
+
+                    XSLFPictureData pd = presentation.addPicture(response.getBody(), PictureData.PictureType.PNG);
+                    XSLFPictureShape picture = slide.createPicture(pd);
+                    picture.setAnchor(new Rectangle(200, 300, 300, 200));
                 }
             }
-        } catch (HttpClientException | IOException ex) {
-            logger.error("GigaChatServiceImpl downloadImageFromUrl exception: {}", ex.getMessage());
+        } catch (HttpClientException ex) {
+            logger.error("GigaChatServiceImpl sendQueryToGenerateAndDownloadImage exception: {}", ex.getMessage());
         }
 
     }
-
 
     @Override
     public void getModels() {
         util.setCertificates();
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-        headers.setBearerAuth(getToken());
+        headers.setBearerAuth(tokenService.getCurrentToken());
         HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(null, headers);
         RestTemplate restTemplate = new RestTemplate();
-        try {
-            ResponseEntity<String> response = restTemplate.exchange(getModelsUrl, HttpMethod.GET, entity, String.class);
-            logger.info("GigaChatServiceImpl getModels: {}", response.getBody());
-        } catch (Exception e) {
-            // Если произошел сбой, попытка обновить токен и выполнить запрос повторно.
-            headers.setBearerAuth(getToken());
-            ResponseEntity<String> response = restTemplate.exchange(getModelsUrl, HttpMethod.GET, entity, String.class);
-            logger.info("GigaChatServiceImpl getModels after retry: {}", response.getBody());
-        }
-    }
-
-    @Override
-    public String getToken() {
-        util.setCertificates();
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-        headers.set("RqUID", rqUID);
-        headers.setBasicAuth(openApiKey);
-        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("scope", "GIGACHAT_API_PERS");
-        HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(body, headers);
-        RestTemplate restTemplate = new RestTemplate();
-        ResponseEntity<String> response = restTemplate.exchange(getTokenUrl, HttpMethod.POST, entity, String.class);
-        return util.getAccessToken(response.getBody());
+        ResponseEntity<String> response = restTemplate.exchange(getModelsUrl, HttpMethod.GET, entity, String.class);
+        logger.info("GigaChatServiceImpl getModels: {}", response.getBody());
     }
 }

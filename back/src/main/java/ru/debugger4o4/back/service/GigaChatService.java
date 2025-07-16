@@ -10,6 +10,4 @@ public interface GigaChatService {
     void sendQueryToGenerateAndDownloadImage(XMLSlideShow presentation,  XSLFSlide slide, String pictureDescription);
 
     void getModels();
-
-    String getToken();
 }
