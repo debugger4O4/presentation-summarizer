@@ -20,10 +20,10 @@
 2.Папка "back": {
 <br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-2.1.mvn install
+2.1.```mvn install```
 <br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-2.2.mvn spring-boot:run
+2.2.```mvn spring-boot:run```
 <br />
 &nbsp;&nbsp;&nbsp;&nbsp;
 }
@@ -34,10 +34,10 @@
 3.Папка "front": {
 <br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-3.1.npm install
+3.1.```npm install```
 <br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-3.2.npm run start
+3.2.```npm run start```
 <br />
 &nbsp;&nbsp;&nbsp;&nbsp;
 }
